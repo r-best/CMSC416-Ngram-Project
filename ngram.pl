@@ -3,6 +3,10 @@ use List::Util qw(min max);
 
 sub println { print "@_"."\n" }
 
+if(0+@ARGV < 3){
+    die "At least 3 arguments required.";
+}
+
 my $N = shift @ARGV; # First command line arg, represents the N in N-gram
 my $M = shift @ARGV; # Second command line arg, number of sentences to generate at end
 my @files = (); # All remaining command line args, list of files to read from
@@ -28,7 +32,7 @@ foreach my $file (@files){
         chomp $text;
         $text = lc $text; # Convert to lowercase
         $text =~ s/[!\?\.]/ <end> <start> /g; # Replace !, ?, and . with sentence separation
-        $text =~ s/([\(\)\$,'`"\x{2019}\x{201c}\x{201d}%&<>:;])/ $1 /g; # Separate punctuation characters into their own tokens
+        $text =~ s/([\(\)\$,'`"\x{2019}\x{201c}\x{201d}%&:;])/ $1 /g; # Separate punctuation characters into their own tokens
         # println $text;
 
         my @tokens = split(/[\s\n]+/, $text);
@@ -49,7 +53,7 @@ foreach my $file (@files){
         }
 
         use Data::Dumper;
-        print Dumper(@ngrams[1]);
+        print Dumper(@ngrams);
 
         close $fh;
     } else { # If unable to open file, ignore it and keep going
