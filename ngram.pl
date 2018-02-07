@@ -27,30 +27,41 @@ foreach my $file (@ARGV){
     if (-f $file){ # If file exists push it onto @files
         push @files, $file;
     } else { # Else ignore it and keep going
-        warn "WARN: File $file does not exist. Ignoring it and continuing";
+        warn "WARN: File '$file' does not exist. Ignoring it and continuing";
     }
 }
 
+# Process the files and build the N-gram models
 foreach my $file (@files){
-    println "Processing file $file...";
+    println "Processing file '$file'...";
     if(open(my $fh, "<:encoding(UTF-8)", $file)){ # Attempt to open file
         my $text = do { local $/; <$fh> }; # Read in the entire file as a string
         chomp $text;
         $text = lc $text; # Convert to lowercase
-        $text =~ s/[!\?\.]/ <end><split><start> /g; # Replace !, ?, and . with sentence separation
+        $text =~ s/^/<start> /g; # Insert <start> tag at beginning of first sentence
+        $text =~ s/(?<!(mr|ms|dr|sr))[\!\?\.](?!$)/ <end><split><start> /g; # Replace all !, ?, and . with separators unless it's the end of the file
+        $text =~ s/[\!\?\.](?=$)/ <end>/g; # Replace the one at the end of the file
         $text =~ s/([\(\)\$,'`"\x{2019}\x{201c}\x{201d}%&:;])/ $1 /g; # Separate punctuation characters into their own tokens
         
         my @sentences = split(/<split>/, $text);
-
+        
         foreach my $sentence (@sentences){
-            # For each sentence, go through the tokens in it
-            my @tokens = split(/[\s\n]+/, $sentence);
-            if(0+@tokens < $N-2){ next; } # If not enough tokens in this sentence (minus the <start> and <end>) then skip it
-            
-            for(my $i = 0; $i < 0+@tokens; $i++){
-                # For each token, assemble the corresponding N-gram and (N-1)-gram
-                # from it and the N-1/N-2 tokens before it, respectively
-                for(my $n = $N-1; $n <= $N; $n++){
+            # $n runs for two loops, taking the values $N-1 and $N,
+            # so you're assembling all $N-grams and all ($N-1)-grams
+            for(my $n = $N; $n <= $N; $n++){
+                # Duplicate <start> and <end> tags based on $n
+                my $sentenceCopy = $sentence =~ s/<start>/" <start> "x$n/egr;
+                $sentenceCopy =~ s/<end>/" <end> "x$n/eg;
+                $sentenceCopy =~ s/^\s+|\s+$//g; # Trim whitespace
+
+                # Split sentence into tokens
+                my @tokens = split(/[\s\n]+/, $sentenceCopy);
+                if(0+@tokens < $N-2){ next; } # If not enough tokens in this sentence (minus the <start> and <end>) then skip it
+
+                # For each token in the sentence, assemble the corresponding
+                # $n-gram from it and the $n-1 tokens before it, respectively
+                # $n will take the values of $N and $N-1
+                for(my $i = 0; $i < 0+@tokens; $i++){
                     if($i-$n+1 < 0) { next; } # If not enough tokens before this one to make an $n-gram, skip this $n
                     my $gram = "";
                     for(my $n2 = 0; $n2 < $n; $n2++){
@@ -62,11 +73,12 @@ foreach my $file (@files){
                 }
             }
         }
-        
-        print Dumper(@ngrams[2]);
+
+        print Dumper(@ngrams[$N]);
 
         close $fh;
     } else { # If unable to open file, ignore it and keep going
         warn "WARN: Error opening file $file. Ignoring it and continuing";
     }
 }
+
