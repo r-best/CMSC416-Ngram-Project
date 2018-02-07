@@ -13,12 +13,17 @@ my $M = shift @ARGV; # Second command line arg, number of sentences to generate 
 my @files = (); # All remaining command line args, list of files to read from
 my @ngrams = (); # Array of hashes, [1] contains a hash of 1-grams to their frequencies, [2] is 2-grams to their frequencies, etc.
 
-for(my $i = $N-1; $i <= $N; $i++){ # Initialize a new hash for values N and N-1
+if($N < 1) { die "N must be greater than 0 (you provided $N)"; }
+if($M < 0) { die "M must be nonnegative (you provided $M)"; }
+
+# Initialize a new hash for values N and N-1
+for(my $i = $N-1; $i <= $N; $i++){
     my %hash;
     $ngrams[$i] = \%hash;
 }
 
-foreach my $file (@ARGV){ # For every file name given on the command line
+# Validate filenames
+foreach my $file (@ARGV){
     if (-f $file){ # If file exists push it onto @files
         push @files, $file;
     } else { # Else ignore it and keep going
@@ -57,8 +62,8 @@ foreach my $file (@files){
                 }
             }
         }
-
-        print Dumper($ngrams[1]{'bee'});
+        
+        print Dumper(@ngrams[2]);
 
         close $fh;
     } else { # If unable to open file, ignore it and keep going
