@@ -1,6 +1,7 @@
 use strict;
 use Data::Dumper;
 use List::Util qw(min max);
+use List::MoreUtils qw(uniq);
 
 sub println { print "@_"."\n" }
 
@@ -48,7 +49,7 @@ foreach my $file (@files){
         foreach my $sentence (@sentences){
             # $n runs for two loops, taking the values $N-1 and $N,
             # so you're assembling all $N-grams and all ($N-1)-grams
-            for(my $n = $N; $n <= $N; $n++){
+            for(my $n = $N-1; $n <= $N; $n++){
                 # Duplicate <start> and <end> tags based on $n
                 my $sentenceCopy = $sentence =~ s/<start>/" <start> "x$n/egr;
                 $sentenceCopy =~ s/<end>/" <end> "x$n/eg;
@@ -74,7 +75,7 @@ foreach my $file (@files){
             }
         }
 
-        print Dumper(@ngrams[$N]);
+        # print Dumper(@ngrams[$N-1]);
 
         close $fh;
     } else { # If unable to open file, ignore it and keep going
@@ -82,3 +83,22 @@ foreach my $file (@files){
     }
 }
 
+
+my %P; # A hash of hashes s.t. $P{p}{q} = P(p|q) = the probability that the next word is p given we've just seen q
+
+# Populate P with possible tokens (1-grams)
+foreach my $ngram (keys %ngrams[$N]){
+    my $temp = $ngram =~ s/.*\s+(.+)$/$1/gr;
+    my %hash;
+    $P{$temp} = \%hash;
+}
+
+# Populate all keys p in P{p} with possible ($N-1)-grams and their probability
+foreach my $p (keys %P){
+    foreach my $n1gram (keys %ngrams[$N-1]){
+        $P{$p}{$n1gram} = $ngrams[$N]{$n1gram." ".$p} / $ngrams[$N-1]{$n1gram};
+        # print $p." ".$n1gram."       ".$ngrams[$N]{$n1gram." ".$p}." / ".$ngrams[$N-1]{$n1gram}."           $n1gram";
+        # println $P{$p}{$n1gram};
+    }
+}
+print Dumper(%P{"<start>"});
