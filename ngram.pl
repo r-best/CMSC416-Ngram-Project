@@ -12,7 +12,7 @@ my $M = shift @ARGV; # Second command line arg, number of sentences to generate 
 my @files = (); # All remaining command line args, list of files to read from
 my @ngrams = (); # Array of hashes, [1] contains a hash of 1-grams to their frequencies, [2] is 2-grams to their frequencies, etc.
 
-for(my $i = 0; $i < $N; $i++){ # Initialize a new hash for all values 1-N
+for(my $i = $N-1; $i <= $N; $i++){ # Initialize a new hash for values N and N-1
     my %hash;
     $ngrams[$i] = \%hash;
 }
@@ -38,9 +38,9 @@ foreach my $file (@files){
         my @tokens = split(/[\s\n]+/, $text);
         
         for(my $i = 0; $i < 0+@tokens; $i++){
-            # For each token, go from 1-N, and for each value assemble the corresponding
-            # N-gram from the current (i) token and the N-1 tokens before it
-            for(my $n = 1; $n <= $N; $n++){
+            # For each token, assemble the corresponding N-gram and (N-1)-gram
+            # from it and the N-1/N-2 tokens before it, respectively
+            for(my $n = $N-1; $n <= $N; $n++){
                 if($i-$n+1 < 0) { next; } # If not enough tokens before this one to make an $n -gram, skip this $n
                 my $gram = "";
                 for(my $n2 = 0; $n2 < $n; $n2++){
