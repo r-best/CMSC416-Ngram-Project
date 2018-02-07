@@ -28,6 +28,7 @@ foreach my $file (@files){
         chomp $text;
         $text = lc $text; # Convert to lowercase
         $text =~ s/[!\?\.]/ <end> <start> /g; # Replace !, ?, and . with sentence separation
+        $text =~ s/([\(\)\$,'`"\x{2019}\x{201c}\x{201d}%&<>:;])/ $1 /g; # Separate punctuation characters into their own tokens
         # println $text;
 
         my @tokens = split(/[\s\n]+/, $text);
