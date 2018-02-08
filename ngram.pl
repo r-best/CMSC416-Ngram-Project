@@ -1,6 +1,4 @@
 use strict;
-use List::Util qw(min max);
-use List::MoreUtils qw(uniq);
 
 sub println { print "@_"."\n" }
 
