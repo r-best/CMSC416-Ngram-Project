@@ -38,6 +38,7 @@ foreach my $file (@files){
     if(open(my $fh, "<:encoding(UTF-8)", $file)){ # Attempt to open file
         my $text = do { local $/; <$fh> }; # Read in the entire file as a string
         chomp $text;
+        println "\tFormatting text...";
         $text = lc $text; # Convert to lowercase
         $text =~ s/^/<start> /g; # Insert <start> tag at beginning of first sentence
         $text =~ s/(?<!(mr|ms|dr|sr))[\!\?\.](?!$)/ <end><split><start> /g; # Replace all !, ?, and . with separators unless it's the end of the file
@@ -46,6 +47,7 @@ foreach my $file (@files){
         
         my @sentences = split(/<split>/, $text);
         
+        println "\tBuilding N-grams...";
         foreach my $sentence (@sentences){
             # $n runs for two loops, taking the values $N-1 and $N,
             # so you're assembling all $N-grams and all ($N-1)-grams
@@ -76,14 +78,14 @@ foreach my $file (@files){
         }
 
         # print Dumper(@ngrams[$N-1]);
-
+        println "\tClosing '$file'";
         close $fh;
     } else { # If unable to open file, ignore it and keep going
         warn "WARN: Error opening file $file. Ignoring it and continuing";
     }
 }
 
-
+println "Calculating probabilities...";
 my %P; # A hash of hashes s.t. $P{a}{b} = P(b|a) = the probability that the next word is b given we've just seen a
 my @tokens; # An array of all tokens (i.e. 1-grams)
 
@@ -100,15 +102,28 @@ foreach my $n1gram (keys %ngrams[$N-1]){
 }
 
 # Populate all keys a in P{a} with all possible tokens and their probability of occurring after a
+my $totalToCalculate = 0+(keys %P);
+my $completedCalculations = 0;
+my $PROGRESS_PRINT_INCR = 0.01; # Constant for how often to print the progress update
+my $lastProgressPrinted = 0.0; # Prints progress update when the progress gets past this by at least $PROGRESS_PRINT_INCR
 foreach my $a (keys %P){
     foreach my $token (@tokens){
         if($a =~ /^((<start>)|\s)+$/ && $token eq "<start>") { next; }
-        $P{$a}{$token} = $ngrams[$N]{$a." ".$token} / $ngrams[$N-1]{$a};
-        # print $p." ".$n1gram."       ".$ngrams[$N]{$n1gram." ".$p}." / ".$ngrams[$N-1]{$n1gram}."           $n1gram";
-        # println $P{$p}{$n1gram};
+        my $freq = $ngrams[$N]{$a." ".$token} / $ngrams[$N-1]{$a};
+        if($freq > 0){
+            $P{$a}{$token} = $freq;
+        }
+    }
+    # This part takes a while, so here's a little bit of code that will print its progress as it goes
+    $completedCalculations++;
+    my $progress = $completedCalculations/$totalToCalculate;
+    if($progress > $lastProgressPrinted + $PROGRESS_PRINT_INCR){
+        $lastProgressPrinted += $PROGRESS_PRINT_INCR;
+        println "\t$progress%";
     }
 }
 
+println "Generating sentences...";
 # Generate $M sentences using the probabilities in %P
 for(my $m = 0; $m < $M; $m++){
     my $sentence = "<start> <start>";
