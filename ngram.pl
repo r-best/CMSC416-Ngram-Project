@@ -84,21 +84,64 @@ foreach my $file (@files){
 }
 
 
-my %P; # A hash of hashes s.t. $P{p}{q} = P(p|q) = the probability that the next word is p given we've just seen q
+my %P; # A hash of hashes s.t. $P{a}{b} = P(b|a) = the probability that the next word is b given we've just seen a
+my @tokens; # An array of all tokens (i.e. 1-grams)
 
-# Populate P with possible tokens (1-grams)
+# Populate @tokens with all possible tokens (last words of $N-grams)
 foreach my $ngram (keys %ngrams[$N]){
-    my $temp = $ngram =~ s/.*\s+(.+)$/$1/gr;
-    my %hash;
-    $P{$temp} = \%hash;
+    my $temp = $ngram =~ s/.*\s+(.+)$/$1/gr; # Get last word
+    push @tokens, $temp;
 }
 
-# Populate all keys p in P{p} with possible ($N-1)-grams and their probability
-foreach my $p (keys %P){
-    foreach my $n1gram (keys %ngrams[$N-1]){
-        $P{$p}{$n1gram} = $ngrams[$N]{$n1gram." ".$p} / $ngrams[$N-1]{$n1gram};
+# Populate P with all of the ($N-1)-grams
+foreach my $n1gram (keys %ngrams[$N-1]){
+    my %hash;
+    $P{$n1gram} = \%hash;
+}
+
+# Populate all keys a in P{a} with all possible tokens and their probability of occurring after a
+foreach my $a (keys %P){
+    foreach my $token (@tokens){
+        if($a =~ /^((<start>)|\s)+$/ && $token eq "<start>") { next; }
+        $P{$a}{$token} = $ngrams[$N]{$a." ".$token} / $ngrams[$N-1]{$a};
         # print $p." ".$n1gram."       ".$ngrams[$N]{$n1gram." ".$p}." / ".$ngrams[$N-1]{$n1gram}."           $n1gram";
         # println $P{$p}{$n1gram};
     }
 }
-print Dumper(%P{"<start>"});
+
+# Generate $M sentences using the probabilities in %P
+for(my $m = 0; $m < $M; $m++){
+    my $sentence = "<start> <start>";
+    my $temp = 0;
+    while($sentence =~ /(?<!<end>)$/){
+        my $random = rand 1;
+        println "RANDOM: ".$random;
+        my $counter = 0.0;
+
+        my @temp = split(/\s+/, $sentence);
+        my @lastNWordsTemp;
+        for(my $i = 1; $i < $N; $i++){
+            unshift @lastNWordsTemp, pop @temp;
+        }
+        my $lastNWords = join(" ", @lastNWordsTemp);
+        println "SENTENCE: $sentence LASTN: $lastNWords";
+        
+        foreach my $token (keys %{$P{$lastNWords}}){
+            println $token." $P{$lastNWords}{$token}";
+            if($P{$lastNWords}{$token} == 0) { next; }
+            $counter += $P{$lastNWords}{$token};
+            println "COUNTER: ".$counter;
+            if($counter > $random){
+                $sentence .= " ".$token;
+                println "SENTENCE: ".$sentence;
+                last;
+            }
+        }
+        $temp++;
+    }
+    println "FINAL SENTENCE: $sentence";
+}
+
+
+
+# print Dumper(%P);
