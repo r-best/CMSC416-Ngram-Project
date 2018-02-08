@@ -1,5 +1,4 @@
 use strict;
-use Data::Dumper;
 use List::Util qw(min max);
 use List::MoreUtils qw(uniq);
 
@@ -97,7 +96,6 @@ foreach my $file (@files){
             }
         }
 
-        # print Dumper(@ngrams[$N-1]);
         println "\tClosing '$file'";
         close $fh;
     } else { # If unable to open file, ignore it and keep going
@@ -182,8 +180,8 @@ for(my $m = 1; $m <= $M; $m++){
     $sentence =~ s/\s+<end>/\./; # Replace <end> tag with a period
     $sentence = ucfirst $sentence; # Capitalize first letter
     $sentence =~ s/\s+(['`])\s+/$1/g; # Remove whitespace around mid-word punctuation marks
-    $sentence =~ s/\s+([,;:\x{2019}\x{201d}])/$1/g; # Remove whitespace before post-word punctuation marks
-    $sentence =~ s/([\x{2018}\x{201c}])\s+/$1/g; # Remove whitespace after pre-word punctuation marks
+    $sentence =~ s/\s+([,;:\)\x{2019}\x{201d}])/$1/g; # Remove whitespace before post-word punctuation marks
+    $sentence =~ s/([\(\x{2018}\x{201c}])\s+/$1/g; # Remove whitespace after pre-word punctuation marks
     
     # Finally, print the sentence
     println "SENTENCE $m: ".$sentence;
