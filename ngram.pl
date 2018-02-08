@@ -104,8 +104,9 @@ foreach my $n1gram (keys %ngrams[$N-1]){
 # Populate all keys a in P{a} with all possible tokens and their probability of occurring after a
 my $totalToCalculate = 0+(keys %P);
 my $completedCalculations = 0;
-my $PROGRESS_PRINT_INCR = 0.01; # Constant for how often to print the progress update
+my $PROGRESS_PRINT_INCR = 1.0; # Constant for how often to print the progress update
 my $lastProgressPrinted = 0.0; # Prints progress update when the progress gets past this by at least $PROGRESS_PRINT_INCR
+println "\tThis part takes a while, I'll print out the progress as I go so you know I'm not frozen";
 foreach my $a (keys %P){
     foreach my $token (@tokens){
         if($a =~ /^((<start>)|\s)+$/ && $token eq "<start>") { next; }
@@ -116,7 +117,7 @@ foreach my $a (keys %P){
     }
     # This part takes a while, so here's a little bit of code that will print its progress as it goes
     $completedCalculations++;
-    my $progress = $completedCalculations/$totalToCalculate;
+    my $progress = ($completedCalculations/$totalToCalculate) * 100;
     if($progress > $lastProgressPrinted + $PROGRESS_PRINT_INCR){
         $lastProgressPrinted += $PROGRESS_PRINT_INCR;
         println "\t$progress%...";
@@ -125,8 +126,13 @@ foreach my $a (keys %P){
 
 println "Generating sentences...";
 # Generate $M sentences using the probabilities in %P
-for(my $m = 0; $m < $M; $m++){
-    my $sentence = "<start> <start>";
+for(my $m = 1; $m <= $M; $m++){
+    # Build beginning of sentence with right amount of <starts> ($N-1 of them)
+    my $sentence = "";
+    for(my $n = 0; $n < $N-1; $n++){
+        $sentence .= "<start>";
+        if($n != $N-1){ $sentence .= " "; }
+    }
     my $temp = 0;
     while($sentence =~ /(?<!<end>)$/){
         my $random = rand 1;
@@ -154,5 +160,15 @@ for(my $m = 0; $m < $M; $m++){
         }
         $temp++;
     }
-    println "FINAL SENTENCE: $sentence";
+
+    # Format sentence for printing
+    $sentence =~ s/^\s+|\s+$//g; # Trim whitespace
+    $sentence =~ s/<start>\s+//g; # Remove <start> tags
+    $sentence =~ s/\s+<end>/\./; # Replace <end> tag with a period
+    $sentence =~ s/\s+(['`])\s+/$1/g; # Remove whitespace around mid-word punctuation marks
+    $sentence =~ s/\s+([,;:\x{2019}\x{201d}])/$1/g; # Remove whitespace before post-word punctuation marks
+    $sentence =~ s/([\x{2018}\x{201c}])\s+/$1/g; # Remove whitespace after pre-word punctuation marks
+    
+    # Finally, print the sentence
+    println "SENTENCE $m: ".$sentence;
 }
