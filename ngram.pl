@@ -30,7 +30,6 @@ foreach my $file (@ARGV){
 
 sub validateFile {
     my $file = @_[0];
-    println "AAA$file";
     if (-d $file){ # If file is a directory, recursively go through all the files in it
         if(opendir(my $dh, $file)){
             foreach my $dirFile (readdir($dh)){
@@ -108,7 +107,7 @@ foreach my $file (@files){
 
 println "Calculating probabilities...";
 my %P; # A hash of hashes s.t. $P{a}{b} = P(b|a) = the probability that the next word is b given we've just seen a
-my @tokens; # An array of all tokens (i.e. 1-grams)
+my @tokens; # An array of all tokens (i.e. 1-grams) generated from the last words of the $N-grams
 
 # Populate @tokens with all possible tokens (last words of $N-grams)
 foreach my $ngram (keys %ngrams[$N]){
@@ -116,7 +115,7 @@ foreach my $ngram (keys %ngrams[$N]){
     push @tokens, $temp;
 }
 
-# Populate P with all of the ($N-1)-grams
+# Populate %P with all of the ($N-1)-grams
 foreach my $n1gram (keys %ngrams[$N-1]){
     my %hash;
     $P{$n1gram} = \%hash;
@@ -145,8 +144,8 @@ foreach my $a (keys %P){
     }
 }
 
-println "Generating sentences...";
 # Generate $M sentences using the probabilities in %P
+println "Generating sentences...";
 for(my $m = 1; $m <= $M; $m++){
     # Build beginning of sentence with right amount of <starts> ($N-1 of them)
     my $sentence = "";
@@ -154,38 +153,34 @@ for(my $m = 1; $m <= $M; $m++){
         $sentence .= "<start>";
         if($n != $N-1){ $sentence .= " "; }
     }
-    my $temp = 0;
-    while($sentence =~ /(?<!<end>)$/){
+    while($sentence =~ /(?<!<end>)$/){ # While sentence doesn't end in an <end> tag
         my $random = rand 1;
-        # println "RANDOM: ".$random;
         my $counter = 0.0;
 
+        # Get the last $N-1 words of the sentence and store in #lastN1Words
         my @temp = split(/\s+/, $sentence);
-        my @lastNWordsTemp;
+        my @lastN1WordsTemp;
         for(my $i = 1; $i < $N; $i++){
-            unshift @lastNWordsTemp, pop @temp;
+            unshift @lastN1WordsTemp, pop @temp;
         }
-        my $lastNWords = join(" ", @lastNWordsTemp);
-        # println "SENTENCE: $sentence LASTN: $lastNWords";
+        my $lastN1Words = join(" ", @lastN1WordsTemp);
         
-        foreach my $token (keys %{$P{$lastNWords}}){
-            # println $token." $P{$lastNWords}{$token}";
-            if($P{$lastNWords}{$token} == 0) { next; }
-            $counter += $P{$lastNWords}{$token};
-            # println "COUNTER: ".$counter;
-            if($counter > $random){
+        # Predict the next word given the previous $N-1 words
+        foreach my $token (keys %{$P{$lastN1Words}}){
+            if($P{$lastN1Words}{$token} == 0) { next; } # Don't bother with anything with a probability of 0
+            $counter += $P{$lastN1Words}{$token}; # Increment counter by the probability amount
+            if($counter > $random){ # Whichever word causes the counter to go above the randomly generated number becomes the next word
                 $sentence .= " ".$token;
-                # println "SENTENCE: ".$sentence;
                 last;
             }
         }
-        $temp++;
     }
 
     # Format sentence for printing
     $sentence =~ s/^\s+|\s+$//g; # Trim whitespace
     $sentence =~ s/<start>\s+//g; # Remove <start> tags
     $sentence =~ s/\s+<end>/\./; # Replace <end> tag with a period
+    $sentence = ucfirst $sentence; # Capitalize first letter
     $sentence =~ s/\s+(['`])\s+/$1/g; # Remove whitespace around mid-word punctuation marks
     $sentence =~ s/\s+([,;:\x{2019}\x{201d}])/$1/g; # Remove whitespace before post-word punctuation marks
     $sentence =~ s/([\x{2018}\x{201c}])\s+/$1/g; # Remove whitespace after pre-word punctuation marks
