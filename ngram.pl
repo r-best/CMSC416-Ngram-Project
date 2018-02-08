@@ -119,7 +119,7 @@ foreach my $a (keys %P){
     my $progress = $completedCalculations/$totalToCalculate;
     if($progress > $lastProgressPrinted + $PROGRESS_PRINT_INCR){
         $lastProgressPrinted += $PROGRESS_PRINT_INCR;
-        println "\t$progress%";
+        println "\t$progress%...";
     }
 }
 
@@ -130,7 +130,7 @@ for(my $m = 0; $m < $M; $m++){
     my $temp = 0;
     while($sentence =~ /(?<!<end>)$/){
         my $random = rand 1;
-        println "RANDOM: ".$random;
+        # println "RANDOM: ".$random;
         my $counter = 0.0;
 
         my @temp = split(/\s+/, $sentence);
@@ -139,16 +139,16 @@ for(my $m = 0; $m < $M; $m++){
             unshift @lastNWordsTemp, pop @temp;
         }
         my $lastNWords = join(" ", @lastNWordsTemp);
-        println "SENTENCE: $sentence LASTN: $lastNWords";
+        # println "SENTENCE: $sentence LASTN: $lastNWords";
         
         foreach my $token (keys %{$P{$lastNWords}}){
-            println $token." $P{$lastNWords}{$token}";
+            # println $token." $P{$lastNWords}{$token}";
             if($P{$lastNWords}{$token} == 0) { next; }
             $counter += $P{$lastNWords}{$token};
-            println "COUNTER: ".$counter;
+            # println "COUNTER: ".$counter;
             if($counter > $random){
                 $sentence .= " ".$token;
-                println "SENTENCE: ".$sentence;
+                # println "SENTENCE: ".$sentence;
                 last;
             }
         }
@@ -156,7 +156,3 @@ for(my $m = 0; $m < $M; $m++){
     }
     println "FINAL SENTENCE: $sentence";
 }
-
-
-
-# print Dumper(%P);
