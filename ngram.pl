@@ -25,10 +25,31 @@ for(my $i = $N-1; $i <= $N; $i++){
 
 # Validate filenames
 foreach my $file (@ARGV){
-    if (-f $file){ # If file exists push it onto @files
-        push @files, $file;
-    } else { # Else ignore it and keep going
-        warn "WARN: File '$file' does not exist. Ignoring it and continuing";
+    validateFile($file);
+}
+
+sub validateFile {
+    my $file = @_[0];
+    println "AAA$file";
+    if (-d $file){ # If file is a directory, recursively go through all the files in it
+        if(opendir(my $dh, $file)){
+            foreach my $dirFile (readdir($dh)){
+                if($dirFile ne "." && $dirFile ne ".."){ # Added this because first time I tested this it processed ./ and ../ and tried to recursively use every file in my computer as training data
+                    validateFile($file."/".$dirFile);
+                }
+            }
+            close $dh;
+        }
+        else{
+            warn "WARN: Error opening directory $file. Ignoring it and continuing";
+        }
+    }
+    else { # File is actually a file
+        if (-f $file){ # Make sure file exists, if so push it onto @files
+            push @files, $file;
+        } else { # Else ignore it and keep going
+            warn "WARN: File '$file' does not exist. Ignoring it and continuing";
+        }
     }
 }
 
