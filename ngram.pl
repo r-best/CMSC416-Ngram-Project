@@ -1,4 +1,7 @@
 use strict;
+use Time::HiRes qw(time);
+
+my $startTime = time();
 
 sub println { print "@_"."\n" }
 
@@ -49,6 +52,7 @@ sub validateFile {
     }
 }
 
+my $totalTokens = 0;
 # Process the files and build the N-gram models
 foreach my $file (@files){
     println "Processing file '$file'...";
@@ -77,7 +81,7 @@ foreach my $file (@files){
                 # Split sentence into tokens
                 my @tokens = split(/[\s\n]+/, $sentenceCopy);
                 if(0+@tokens < $N-2){ next; } # If not enough tokens in this sentence (minus the <start> and <end>) then skip it
-
+                $totalTokens += 0+@tokens;
                 # For each token in the sentence, assemble the corresponding
                 # $n-gram from it and the $n-1 tokens before it, respectively
                 # $n will take the values of $N and $N-1
@@ -100,6 +104,8 @@ foreach my $file (@files){
         warn "WARN: Error opening file $file. Ignoring it and continuing";
     }
 }
+
+println "NUM TOKENS: $totalTokens";
 
 println "Calculating probabilities...";
 my %P; # A hash of hashes s.t. $P{a}{b} = P(b|a) = the probability that the next word is b given we've just seen a
@@ -125,10 +131,9 @@ my $lastProgressPrinted = 0.0; # Prints progress update when the progress gets p
 println "\tThis part takes a while, I'll print out the progress as I go so you know I'm not frozen";
 foreach my $a (keys %P){
     foreach my $token (@tokens){
-        if($a =~ /^((<start>)|\s)+$/ && $token eq "<start>") { next; }
-        my $freq = $ngrams[$N]{$a." ".$token} / $ngrams[$N-1]{$a};
-        if($freq > 0){
-            $P{$a}{$token} = $freq;
+        if(exists $ngrams[$N]{$a." ".$token}){
+            if($a =~ /^((<start>)|\s)+$/ && $token eq "<start>") { next; }
+            $P{$a}{$token} = $ngrams[$N]{$a." ".$token} / $ngrams[$N-1]{$a};
         }
     }
     # This part takes a while, so here's a little bit of code that will print its progress as it goes
@@ -184,3 +189,6 @@ for(my $m = 1; $m <= $M; $m++){
     # Finally, print the sentence
     println "SENTENCE $m: ".$sentence;
 }
+
+my $elapsedTime = (time() - $startTime) / 60;
+println "Execution took: $elapsedTime minutes";
