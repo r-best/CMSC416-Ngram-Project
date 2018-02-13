@@ -1,5 +1,7 @@
 use strict;
 use Time::HiRes qw(time);
+use List::MoreUtils qw(uniq);
+use Data::Dumper;
 
 my $startTime = time();
 
@@ -16,12 +18,6 @@ my @ngrams = (); # Array of hashes, [1] contains a hash of 1-grams to their freq
 
 if($N < 1) { die "N must be greater than 0 (you provided $N)"; }
 if($M < 0) { die "M must be nonnegative (you provided $M)"; }
-
-# Initialize a new hash for values N and N-1
-for(my $i = $N-1; $i <= $N; $i++){
-    my %hash;
-    $ngrams[$i] = \%hash;
-}
 
 # Validate filenames
 foreach my $file (@ARGV){
@@ -81,7 +77,10 @@ foreach my $file (@files){
                 # Split sentence into tokens
                 my @tokens = split(/[\s\n]+/, $sentenceCopy);
                 if(0+@tokens < $N-2){ next; } # If not enough tokens in this sentence (minus the <start> and <end>) then skip it
-                $totalTokens += 0+@tokens;
+                
+                if($n == $N){ # Add to counter for total number of tokens
+                    $totalTokens += 0+@tokens;
+                }
                 # For each token in the sentence, assemble the corresponding
                 # $n-gram from it and the $n-1 tokens before it, respectively
                 # $n will take the values of $N and $N-1
@@ -105,8 +104,6 @@ foreach my $file (@files){
     }
 }
 
-println "NUM TOKENS: $totalTokens";
-
 println "Calculating probabilities...";
 my %P; # A hash of hashes s.t. $P{a}{b} = P(b|a) = the probability that the next word is b given we've just seen a
 my @tokens; # An array of all tokens (i.e. 1-grams) generated from the last words of the $N-grams
@@ -116,11 +113,21 @@ foreach my $ngram (keys %ngrams[$N]){
     my $temp = $ngram =~ s/.*\s+(.+)$/$1/gr; # Get last word
     push @tokens, $temp;
 }
+@tokens = uniq(@tokens);
 
-# Populate %P with all of the ($N-1)-grams
-foreach my $n1gram (keys %ngrams[$N-1]){
+println "NUM UNIQUE TOKENS: ".(0+@tokens);
+println "NUM TOKENS TOTAL: ".$totalTokens;
+# println Dumper(@tokens);
+# Populate %P with all of the ($N-1)-grams, unless $N == 1, in which case just make one dummy entry
+if($N == 1){
     my %hash;
-    $P{$n1gram} = \%hash;
+    $P{"dummy entry"} = \%hash;
+}
+else{
+    foreach my $n1gram (keys %ngrams[$N-1]){
+        my %hash;
+        $P{$n1gram} = \%hash;
+    }
 }
 
 # Populate all keys a in P{a} with all possible tokens and their probability of occurring after a
@@ -131,9 +138,11 @@ my $lastProgressPrinted = 0.0; # Prints progress update when the progress gets p
 println "\tThis part takes a while, I'll print out the progress as I go so you know I'm not frozen";
 foreach my $a (keys %P){
     foreach my $token (@tokens){
-        if(exists $ngrams[$N]{$a." ".$token}){
-            if($a =~ /^((<start>)|\s)+$/ && $token eq "<start>") { next; }
-            $P{$a}{$token} = $ngrams[$N]{$a." ".$token} / $ngrams[$N-1]{$a};
+        if($a =~ /^((<start>)|\s)+$/ && $token eq "<start>") { next; }
+        if(($N == 1 && exists $ngrams[$N]{$token}) || ($N != 1 && exists $ngrams[$N]{$a." ".$token})){
+            my $numerator = $N == 1 ? $ngrams[$N]{$token} : $ngrams[$N]{$a." ".$token};
+            my $denominator = $N == 1 ? $totalTokens : $ngrams[$N-1]{$a};
+            $P{$a}{$token} = $numerator / $denominator;
         }
     }
     # This part takes a while, so here's a little bit of code that will print its progress as it goes
@@ -150,22 +159,34 @@ println "Generating sentences...";
 for(my $m = 1; $m <= $M; $m++){
     # Build beginning of sentence with right amount of <starts> ($N-1 of them)
     my $sentence = "";
-    for(my $n = 0; $n < $N-1; $n++){
-        $sentence .= "<start>";
-        if($n != $N-1){ $sentence .= " "; }
+    if($N == 1){
+        $sentence = "<start>";
     }
+    else{
+        for(my $n = 0; $n < $N-1; $n++){
+            $sentence .= "<start>";
+            if($n < $N-2){ $sentence .= " "; }
+        }
+    }
+
     while($sentence =~ /(?<!<end>)$/){ # While sentence doesn't end in an <end> tag
         my $random = rand 1;
         my $counter = 0.0;
-
-        # Get the last $N-1 words of the sentence and store in #lastN1Words
-        my @temp = split(/\s+/, $sentence);
-        my @lastN1WordsTemp;
-        for(my $i = 1; $i < $N; $i++){
-            unshift @lastN1WordsTemp, pop @temp;
-        }
-        my $lastN1Words = join(" ", @lastN1WordsTemp);
         
+        my $lastN1Words;
+        if($N == 1){ # Special case, just use the dummy entry entered earlier if $N == 1
+            $lastN1Words = "dummy entry";
+        }
+        else{
+            # Get the last $N-1 words of the sentence and store in #lastN1Words
+            my @temp = split(/\s+/, $sentence);
+            my @lastN1WordsTemp;
+            for(my $i = 1; $i < $N; $i++){
+                unshift @lastN1WordsTemp, pop @temp;
+            }
+            $lastN1Words = join(" ", @lastN1WordsTemp);
+        }
+
         # Predict the next word given the previous $N-1 words
         foreach my $token (keys %{$P{$lastN1Words}}){
             if($P{$lastN1Words}{$token} == 0) { next; } # Don't bother with anything with a probability of 0
