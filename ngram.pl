@@ -1,3 +1,30 @@
+# Assignment 2
+# CMSC 416
+# Due: Mon Feb. 19, 2018
+# Program Summary:
+#     A program that generates sentences. Give it some text and it will read through it and try to write sentences that look like the
+#     ones it saw. Useful for automatically generating new episodes of the hit 90s sitcom Seinfeld.
+# Algorithm:
+#     First, processes all provided files one by one, reading each one into a string and parsing it into sentences, then generating
+#         all N-grams and (N-1)-grams from those sentences.
+#     Second, finds all possible tokens by taking the last words of all N-grams, then calculates the probabilities of all possible
+#         combinations of (N-1)-grams and tokens.
+#     Finally, uses those probabilities to generate sentences by choosing each word according to the probability it has of coming
+#         after the previous N-1 words.
+# Usage Format:
+#     `perl ngram.pl N M file1 [file2 file3 ...]`
+#     N = Value of N in N-gram, i.e. if N is 3 then each word in the generated sentences will be chosen using the 2 words before it
+#     M = Number of sentences to generate
+#     file1 [file2 file3 ...] = All args after N and M are paths to files to use as training data
+#         - If you give a directory, all files in that directory will recursively be used as training data (so don't put "/")
+# Usage Examples:
+#     `perl ngram.pl 3 100 training/BeeMovie.txt`
+#         - Generates 100 sentences using the file BeeMovie.txt
+#     `perl ngram.pl 3 100 training/BeeMovie.txt training/JekyllAndHyde.txt`
+#         - Generates 100 sentences using the files BeeMovie.txt and JekyllAndHyde.txt
+#     `perl ngram.pl 3 200 training/Seinfeld`
+#         - Generates 200 sentences using all the files in the training/Seinfeld directory
+
 use strict;
 use Time::HiRes qw(time);
 use List::MoreUtils qw(uniq);
